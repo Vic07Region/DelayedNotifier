@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Notifier UI</title>
+    <link rel="stylesheet" href="web/style.css" />
+</head>
+<body>
+<div class="container">
+    <h1>Уведомления</h1>
+
+    <!-- Создание уведомления -->
+    <section id="create-section">
+        <h2>Создать уведомление</h2>
+        <form id="create-form">
+            <label>Канал:
+                <select id="channel" required>
+                    <option value="email">Email</option>
+                    <option value="telegram">Telegram</option>
+                </select>
+            </label>
+
+            <label id="recipient-label">Получатель:
+                <input type="text" id="recipient" required placeholder="Введите email или @username" />
+                <div id="recipient-error" class="field-error"></div>
+            </label>
+
+            <label>Время отправки (местное время):
+                <input type="datetime-local" id="scheduled_at" required />
+                <div class="hint">Будет отправлено в выбранное время по часовому поясу UTC<strong id="time_zone"></strong></div>
+            </label>
+
+            <div class="payload-section">
+                <h3>Payload (данные уведомления)</h3>
+                <div id="payload-fields"></div>
+                <button type="button" id="add-payload-field">➕ Добавить поле</button>
+            </div>
+
+            <button type="submit">Создать уведомление</button>
+        </form>
+        <div id="create-result"></div>
+    </section>
+
+    <!-- Получение / удаление -->
+    <section id="manage-section">
+        <h2>Проверить или отменить</h2>
+        <input type="text" id="notification-id" placeholder="ID уведомления (UUID)" />
+        <div class="button-group">
+            <button id="get-btn">Получить статус</button>
+            <button id="delete-btn">Отменить</button>
+        </div>
+        <div id="manage-result"></div>
+    </section>
+</div>
+
+<script src="web/script.js"></script>
+</body>
+</html>

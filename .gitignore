@@ -1,0 +1,6 @@
+/.todo/
+/.idea/
+/.git/
+
+/.env
+/main.go

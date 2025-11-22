@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: delayed-notifier-postgres-dev
+    environment:
+      POSTGRES_DB: notifier
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notifier"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - delayed-notifier-dev-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: delayed-notifier-redis-dev
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data_dev:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - delayed-notifier-dev-network
+
+  # RabbitMQ Message Queue
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: delayed-notifier-rabbitmq-dev
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq_data_dev:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"   # AMQP порт
+      - "15672:15672" # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - delayed-notifier-dev-network
+
+  # MailHog - Email Testing Tool
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: delayed-notifier-mailhog-dev
+    ports:
+      - "1025:1025"  # SMTP порт для приложения
+      - "8025:8025"  # Web UI порт
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8025"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - delayed-notifier-dev-network
+
+# Volumes для персистентных данных (только для инфраструктуры)
+volumes:
+  postgres_data_dev:
+    driver: local
+  redis_data_dev:
+    driver: local
+  rabbitmq_data_dev:
+    driver: local
+
+# Сеть для всех сервисов
+networks:
+  delayed-notifier-dev-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16

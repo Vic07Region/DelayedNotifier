@@ -1,0 +1,79 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+TESTING_REPORT.md
+*.md
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# IDE
+.idea/
+.vscode/
+.todo/
+.git/
+*.iml
+
+# Go
+#go.mod
+#go.sum
+
+# Testing
+tests/
+*.test.go
+*_test.go
+
+# Build artifacts
+delayed-notifier
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage.out
+*.cover
+
+# Environment
+.env
+.env.example
+.env.local
+
+# Vendor (если используется)
+vendor/
+
+# Node modules (если есть)
+node_modules/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*~
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Config files that shouldn't be in image
+config.local.yml
+config.dev.yml

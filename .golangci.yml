@@ -1,0 +1,65 @@
+version: "2"
+
+run:
+  timeout: 1m
+  tests: false
+
+linters:
+  default: none  # replaces disable-all
+  enable:
+    - govet
+    - errcheck
+    - staticcheck      # includes gosimple and stylecheck
+    - unused
+    - revive
+    - gocritic
+    - ineffassign
+    - misspell
+    - unparam
+    - nakedret
+    - prealloc
+    - gocyclo
+    - dupl
+    - dogsled
+    - goconst
+    - gocognit
+    - godot
+    - godox
+    - nolintlint
+    - whitespace
+    - forbidigo
+    - lll
+    - gosec
+    - asasalint
+    - bodyclose
+    - durationcheck
+    - errorlint
+    - exhaustive
+    - goprintffuncname
+    - importas
+    - makezero
+    - nestif
+    - noctx
+    - predeclared
+    - rowserrcheck
+    - sqlclosecheck
+    - testpackage
+    - thelper
+    - tparallel
+    - wastedassign
+    - zerologlint
+  disable:
+    - wrapcheck
+
+
+
+formatters:
+  enable:
+    - gofmt
+    # - goimports
+    - gci
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+

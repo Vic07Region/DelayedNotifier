@@ -1,0 +1,204 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: delayed-notifier-postgres
+    environment:
+      POSTGRES_DB: notifier
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d/init:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notifier"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - delayed-notifier-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: delayed-notifier-redis
+    command: redis-server --requirepass redis --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - delayed-notifier-network
+
+  # RabbitMQ Message Queue
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: delayed-notifier-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"   # AMQP порт
+      - "15672:15672" # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - delayed-notifier-network
+
+  # MailHog - Email Testing Tool
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: delayed-notifier-mailhog
+    environment:
+      MH_UNSECURE_AUTH: "true"
+    ports:
+      - "1025:1025"  # SMTP порт для приложения
+      - "8025:8025"  # Web UI порт
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8025"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - delayed-notifier-network
+
+  # Delayed Notifier Application
+  delayed-notifier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: delayed-notifier-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mailhog:
+        condition: service_healthy
+    environment:
+      # HTTP Server Configuration
+      DELAYED_NOTIFIER_HTTP_HOST: "0.0.0.0"
+      DELAYED_NOTIFIER_HTTP_PORT: "8080"
+      
+      # Database Configuration
+      DELAYED_NOTIFIER_DATABASE_DSN: "postgres://postgres:postgres@postgres:5432/notifier?sslmode=disable"
+      DELAYED_NOTIFIER_DATABASE_MAX_OPEN_CONNS: "10"
+      DELAYED_NOTIFIER_DATABASE_MAX_IDLE_CONNS: "5"
+      
+      # Redis Configuration
+      DELAYED_NOTIFIER_REDIS_ADDR: "redis:6379"
+      DELAYED_NOTIFIER_REDIS_PASSWORD: "redis"
+      DELAYED_NOTIFIER_REDIS_DB: "0"
+      
+      # RabbitMQ Configuration
+      DELAYED_NOTIFIER_RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      DELAYED_NOTIFIER_RABBITMQ_CONNECTIONNAME: "delayednotifier"
+      DELAYED_NOTIFIER_RABBITMQ_CONNECTTIMEOUT: "5s"
+      DELAYED_NOTIFIER_RABBITMQ_HEARTBEAT: "5s"
+      DELAYED_NOTIFIER_RABBITMQ_EXCHANGENAME: "DelayedNotifier"
+      DELAYED_NOTIFIER_RABBITMQ_QUEUENAME: "notification"
+      DELAYED_NOTIFIER_RABBITMQ_ROUTINGKEY: "notification"
+      DELAYED_NOTIFIER_RABBITMQ_PUBLISHRETRY_ATTEMPTS: "3"
+      DELAYED_NOTIFIER_RABBITMQ_PUBLISHRETRY_DELAY: "3s"
+      DELAYED_NOTIFIER_RABBITMQ_PUBLISHRETRY_BACKOFF: "3"
+      DELAYED_NOTIFIER_RABBITMQ_CONSUMERRETRY_ATTEMPTS: "3"
+      DELAYED_NOTIFIER_RABBITMQ_CONSUMERRETRY_DELAY: "3s"
+      DELAYED_NOTIFIER_RABBITMQ_CONSUMERRETRY_BACKOFF: "3"
+      
+      # Email Sender Configuration (MailHog)
+      DELAYED_NOTIFIER_EMAIL_HOST: "mailhog"
+      DELAYED_NOTIFIER_EMAIL_PORT: "1025"
+      DELAYED_NOTIFIER_EMAIL_USERNAME: ""
+      DELAYED_NOTIFIER_EMAIL_PASSWORD: ""
+      DELAYED_NOTIFIER_EMAIL_FROM: "test@localhost"
+      DELAYED_NOTIFIER_EMAIL_USETLS: "false"
+      
+      # Migrations Configuration
+      DELAYED_NOTIFIER_MIGRATIONS_PATH: "/migrations"
+      
+      # Logging Configuration
+      DELAYED_NOTIFIER_LOGGING_LEVEL: "info"
+    
+    ports:
+      - "8080:8080"
+
+    # Health check для приложения - проверка через команду health
+    healthcheck:
+      test: ["CMD", "/delayed-notifier", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Перезапуск при краше
+    restart: unless-stopped
+
+    command: ["runserver"]
+    
+    networks:
+      - delayed-notifier-network
+
+  # Миграции (отдельный сервис для запуска миграций)
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: delayed-notifier-migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database Configuration
+      DELAYED_NOTIFIER_DATABASE_DSN: "postgres://postgres:postgres@postgres:5432/notifier?sslmode=disable"
+      DELAYED_NOTIFIER_DATABASE_MAX_OPEN_CONNS: "10"
+      DELAYED_NOTIFIER_DATABASE_MAX_IDLE_CONNS: "5"
+      
+      # Migrations Configuration
+      DELAYED_NOTIFIER_MIGRATIONS_PATH: "/migrations"
+      
+      # Logging Configuration
+      DELAYED_NOTIFIER_LOGGING_LEVEL: "info"
+    
+    command: ["migrate", "up"]
+    restart: "no"
+    networks:
+      - delayed-notifier-network
+
+# Volumes для персистентных данных
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+
+# Сеть для всех сервисов
+networks:
+  delayed-notifier-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
