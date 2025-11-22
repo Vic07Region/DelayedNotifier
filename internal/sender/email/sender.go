@@ -98,14 +98,13 @@ func (s *SMTPSender) connect() error {
 	// Пропускаем аутентификацию, если credentials пустые (для MailHog и других тестовых SMTP)
 	if s.Username == "" && s.Password == "" {
 		fmt.Printf("Note: Skipping authentication (empty credentials for MailHog)\n")
-	} else {
+	}
+
+	if s.Username != "" && s.Password != "" {
 		// Проверяем, поддерживает ли сервер аутентификацию
 		auth := smtp.CRAMMD5Auth(s.Username, s.Password)
 
-		//auth := smtp.PlainAuth("delayed_notifier", s.Username, s.Password, s.Host)
-
 		if ok, _ := client.Extension("AUTH"); ok {
-
 			if err := client.Auth(auth); err != nil {
 				_ = client.Close()
 				return fmt.Errorf("authentication failed: %w", err)

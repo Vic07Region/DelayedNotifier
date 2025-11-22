@@ -125,8 +125,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const timezoneValue = document.getElementById('time_zone');
     // Установим время по умолчанию — через 10 минут
     const now = new Date();
-    let tzval = getTimezoneHourOffset();
-    timezoneValue.innerHTML = tzval;
+    timezoneValue.innerHTML = etTimezoneHourOffset();
 // Добавляем 100 дней
 //     now.setDate(now.getDate() + 100);
 
@@ -140,9 +139,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
 
-    const dtLocal = `${year}-${month}-${day}T${hours}:${minutes}`;
-
-    document.getElementById('scheduled_at').value = dtLocal;
+    document.getElementById('scheduled_at').value = `${year}-${month}-${day}T${hours}:${minutes}`;
 });
 
 // Конвертация datetime-local +05:00 в ISO с TZ

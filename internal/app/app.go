@@ -142,7 +142,9 @@ func (a *Application) checkDatabase() error {
 	if err != nil {
 		return err
 	}
-	defer db.Master.Close()
+	defer func(Master *sql.DB) {
+		_ = Master.Close()
+	}(db.Master)
 
 	return db.Master.Ping()
 }

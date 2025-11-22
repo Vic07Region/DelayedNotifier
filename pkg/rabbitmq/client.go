@@ -171,7 +171,9 @@ func (c *RabbitClient) Ping() error {
 	if err != nil {
 		return fmt.Errorf("failed to create channel: %w", err)
 	}
-	defer ch.Close()
+	defer func(ch *amqp091.Channel) {
+		_ = ch.Close()
+	}(ch)
 
 	// Простая проверка - объявляем временную очередь
 	_, err = ch.QueueDeclare(
