@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8080/notify'; // замените при необходимости
+const API_BASE = '/notify'; // замените при необходимости
 
 function displayResult(elId, content, isError = false) {
     const el = document.getElementById(elId);
